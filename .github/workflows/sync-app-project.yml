@@ -1,0 +1,56 @@
+name: Sync App Project
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # 매 시간 정각
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync open issues from topic:application repos to Application Part Board
+        env:
+          GH_TOKEN: ${{ secrets.LABEL_SEED_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          PROJECT_NUMBER=6
+          ORG=wirobotics
+
+          if [ -z "$GH_TOKEN" ]; then
+            echo "❌ LABEL_SEED_TOKEN secret not set."
+            exit 1
+          fi
+
+          echo "🔍 Finding repos with topic 'application'..."
+          repos=$(gh search repos --owner "$ORG" --topic application --limit 100 --json fullName -q '.[].fullName')
+          repo_count=$(echo "$repos" | wc -l | tr -d ' ')
+          echo "Found $repo_count repos:"
+          echo "$repos" | sed 's/^/  - /'
+          echo ""
+
+          total=0
+          for repo in $repos; do
+            issue_count=$(gh issue list -R "$repo" --state open --limit 200 --json url -q 'length')
+            printf "═══ %s (%s open issues)\n" "$repo" "$issue_count"
+
+            if [ "$issue_count" = "0" ]; then
+              continue
+            fi
+
+            gh issue list -R "$repo" --state open --limit 200 --json url -q '.[].url' \
+              | while IFS= read -r url; do
+                  gh project item-add "$PROJECT_NUMBER" --owner "$ORG" --url "$url" >/dev/null 2>&1 \
+                    && echo "  ✅ $url" \
+                    || echo "  ⚠️  $url (failed)"
+                done
+
+            total=$((total + issue_count))
+          done
+
+          echo ""
+          echo "✨ Done. Processed $total open issues across $repo_count repos → Project #$PROJECT_NUMBER"

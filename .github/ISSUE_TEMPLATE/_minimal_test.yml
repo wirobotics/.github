@@ -1,7 +1,0 @@
-name: Minimal Test
-description: Just testing if any template shows
-body:
-  - type: textarea
-    id: test
-    attributes:
-      label: Test field

@@ -1,6 +1,7 @@
 name: 🐛 버그 신고
 description: 버그를 신고합니다
 title: "[Bug] "
+type: Bug
 body:
   - type: markdown
     attributes:

@@ -1,6 +1,7 @@
 name: 🧹 Chore (내부 작업)
 description: 리팩토링, 의존성 업데이트, 빌드/CI 등 내부 작업
 title: "[Chore] "
+type: Chore
 body:
   - type: textarea
     id: what

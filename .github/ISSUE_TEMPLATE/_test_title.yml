@@ -1,8 +1,0 @@
-name: Test Title
-description: Testing title with trailing space
-title: "[Bug] "
-body:
-  - type: textarea
-    id: x
-    attributes:
-      label: hello

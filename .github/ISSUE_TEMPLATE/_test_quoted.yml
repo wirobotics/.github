@@ -1,0 +1,10 @@
+name: Test Quoted
+description: "버그를 신고합니다"
+title: "[TestQ] "
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 무엇이 발생했나요?
+    validations:
+      required: true

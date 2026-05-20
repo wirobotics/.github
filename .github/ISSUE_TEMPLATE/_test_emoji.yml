@@ -1,0 +1,7 @@
+name: 🐛 Test Emoji
+description: Testing emoji in name
+body:
+  - type: textarea
+    id: x
+    attributes:
+      label: hello

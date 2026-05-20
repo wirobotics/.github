@@ -19,3 +19,6 @@ wim-coway
 inhouse-appstore
 wirobotics-ERP-web
 wim-application-guide-web
+
+# === Epic 관리 ===
+application-epic

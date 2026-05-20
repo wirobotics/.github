@@ -1,0 +1,19 @@
+# 라벨 정의 — 이 파일은 문서이자 단일 진실 원천(SSOT)입니다.
+# 실제 적용은 scripts/seed-labels.sh 를 통해 수동으로 합니다.
+
+part:
+  - name: part:frontend
+    color: 1D76DB
+    description: "프론트엔드 (웹 UI)"
+  - name: part:backend
+    color: 0E8A16
+    description: "백엔드 (API/서버)"
+  - name: part:app
+    color: D93F0B
+    description: "앱 (네이티브/모바일)"
+  - name: part:design
+    color: F9D0C4
+    description: "디자인 (UX/시각)"
+  - name: part:product
+    color: FBCA04
+    description: "제품 기획 (요구사항/PM)"

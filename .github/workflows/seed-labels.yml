@@ -19,13 +19,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Python + PyYAML
+        run: pip install pyyaml
+
       - name: Seed labels to target repos
         env:
           GH_TOKEN: ${{ secrets.LABEL_SEED_TOKEN }}
         run: |
           if [ -z "$GH_TOKEN" ]; then
             echo "❌ LABEL_SEED_TOKEN secret not set in this repo."
-            echo "→ See README for setup instructions."
+            echo "→ Settings → Secrets → Actions → Add 'LABEL_SEED_TOKEN' with a PAT (repo scope)."
             exit 1
           fi
           chmod +x scripts/seed-labels.sh scripts/seed-all.sh

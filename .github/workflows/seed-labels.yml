@@ -1,0 +1,32 @@
+name: Seed Labels
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'labels.yml'
+      - 'scripts/seed-labels.sh'
+      - 'scripts/seed-all.sh'
+      - 'scripts/seed-targets.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Seed labels to target repos
+        env:
+          GH_TOKEN: ${{ secrets.LABEL_SEED_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "❌ LABEL_SEED_TOKEN secret not set in this repo."
+            echo "→ See README for setup instructions."
+            exit 1
+          fi
+          chmod +x scripts/seed-labels.sh scripts/seed-all.sh
+          ./scripts/seed-all.sh

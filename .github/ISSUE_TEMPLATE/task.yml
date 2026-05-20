@@ -1,4 +1,4 @@
-name: 📋 Task (일반 작업)
+name: Task (일반 작업)
 description: "Bug / Feature / Chore에 속하지 않는 일반 작업 (예: Epic 하위 작업, 조사, 결정사항)"
 title: "[Task] "
 type: Task

@@ -2,7 +2,7 @@ name: Sync App Project
 
 on:
   schedule:
-    - cron: '0 * * * *'   # 매 시간 정각
+    - cron: '0 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -12,45 +12,47 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Sync open issues from topic:application repos to Application Part Board
+      - name: Debug — check auth and scopes
+        env:
+          GH_TOKEN: ${{ secrets.LABEL_SEED_TOKEN }}
+        run: |
+          echo "=== gh auth status ==="
+          gh auth status 2>&1 || true
+          echo ""
+          echo "=== try direct GraphQL project access ==="
+          gh api graphql -f query='query { viewer { login } }' 2>&1 || true
+          echo ""
+          echo "=== try to access Project #6 metadata ==="
+          gh project view 6 --owner wirobotics --format json 2>&1 | head -3 || true
+          echo ""
+          echo "=== try to add 1 test issue ==="
+          gh project item-add 6 --owner wirobotics --url "https://github.com/wirobotics/wirobotics-mall-back/issues/7" 2>&1 | head -10 || echo "exit: $?"
+
+      - name: Sync open issues
         env:
           GH_TOKEN: ${{ secrets.LABEL_SEED_TOKEN }}
         run: |
           set -euo pipefail
-
           PROJECT_NUMBER=6
           ORG=wirobotics
 
-          if [ -z "$GH_TOKEN" ]; then
-            echo "❌ LABEL_SEED_TOKEN secret not set."
-            exit 1
-          fi
-
-          echo "🔍 Finding repos with topic 'application'..."
           repos=$(gh search repos --owner "$ORG" --topic application --limit 100 --json fullName -q '.[].fullName')
-          repo_count=$(echo "$repos" | wc -l | tr -d ' ')
-          echo "Found $repo_count repos:"
           echo "$repos" | sed 's/^/  - /'
-          echo ""
 
-          total=0
           for repo in $repos; do
             issue_count=$(gh issue list -R "$repo" --state open --limit 200 --json url -q 'length')
             printf "═══ %s (%s open issues)\n" "$repo" "$issue_count"
-
-            if [ "$issue_count" = "0" ]; then
-              continue
-            fi
+            [ "$issue_count" = "0" ] && continue
 
             gh issue list -R "$repo" --state open --limit 200 --json url -q '.[].url' \
               | while IFS= read -r url; do
-                  gh project item-add "$PROJECT_NUMBER" --owner "$ORG" --url "$url" >/dev/null 2>&1 \
-                    && echo "  ✅ $url" \
-                    || echo "  ⚠️  $url (failed)"
+                  result=$(gh project item-add "$PROJECT_NUMBER" --owner "$ORG" --url "$url" 2>&1)
+                  exit_code=$?
+                  if [ $exit_code -eq 0 ]; then
+                    echo "  ✅ $url"
+                  else
+                    echo "  ⚠️  $url"
+                    echo "      reason: $(echo "$result" | head -1)"
+                  fi
                 done
-
-            total=$((total + issue_count))
           done
-
-          echo ""
-          echo "✨ Done. Processed $total open issues across $repo_count repos → Project #$PROJECT_NUMBER"

@@ -1,0 +1,25 @@
+name: 🧹 Chore (내부 작업)
+description: 리팩토링, 의존성 업데이트, 빌드/CI 등 내부 작업
+title: "[Chore] "
+type: Chore
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 무엇을 할 것인가
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: 왜 필요한가
+      description: Chore는 가치가 모호해지기 쉽습니다. 명시적으로 적어주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope-note
+    attributes:
+      label: 영향 범위 / 주의사항
+      description: 다른 작업과 충돌하거나 주의할 점이 있다면 적어주세요.

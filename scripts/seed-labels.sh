@@ -5,10 +5,11 @@
 #
 # 동작:
 #   - 같은 디렉토리 한 단계 위의 labels.yml 을 읽어서
-#     정의된 모든 라벨을 대상 레포에 추가합니다.
-#   - labels.yml 이 단일 진실 원천 (SSOT). 이 스크립트는 그것을 적용할 뿐입니다.
-#   - 이미 존재하는 라벨은 자동 skip (멱등성).
-#   - 어떤 라벨도 삭제하거나 덮어쓰지 않습니다 (--force 미사용).
+#     정의된 모든 라벨을 대상 레포에 적용 (생성 또는 업데이트) 합니다.
+#   - labels.yml 이 단일 진실 원천 (SSOT).
+#   - 신규 이름 → 생성
+#   - 기존 이름 (이미 레포에 있음) → 색깔/설명 업데이트 (`--force` 사용)
+#   - 라벨 삭제는 자동화하지 않습니다 (안전 우선, 별도 수동 작업).
 #
 # 요구사항:
 #   - gh CLI 로그인 (`gh auth login`) 또는 GH_TOKEN/GITHUB_TOKEN
@@ -31,24 +32,36 @@ if [ ! -f "$LABELS_YML" ]; then
 fi
 
 echo "📍 대상 레포: $REPO"
+
+# 기존 라벨 목록을 한 번에 가져와서 캐싱 (API 호출 절약)
+EXISTING_LABELS=" $(gh label list -R "$REPO" --limit 200 --json name -q '.[].name' 2>/dev/null | tr '\n' ' ') "
+
 echo ""
 
-create_label() {
+apply_label() {
   local name="$1"
   local color="$2"
   local desc="$3"
 
+  local action
+  if [[ "$EXISTING_LABELS" == *" $name "* ]]; then
+    action="♻️  업데이트"
+  else
+    action="✅ 생성    "
+  fi
+
   if gh label create "$name" \
        --color "$color" \
        --description "$desc" \
-       -R "$REPO" 2>/dev/null; then
-    echo "✅ 생성: $name"
+       --force \
+       -R "$REPO" >/dev/null 2>&1; then
+    echo "$action: $name"
   else
-    echo "⏭️  스킵 (이미 존재): $name"
+    echo "⚠️  실패     : $name"
   fi
 }
 
-# labels.yml 을 파싱해서 "name|color|description" 줄로 변환
+# labels.yml 파싱
 LABELS_LIST=$(python3 - "$LABELS_YML" <<'PY'
 import sys, yaml
 with open(sys.argv[1]) as f:
@@ -64,9 +77,10 @@ for category, items in data.items():
 PY
 )
 
+# 각 라벨 적용
 echo "$LABELS_LIST" | while IFS='|' read -r name color desc; do
     [ -z "$name" ] && continue
-    create_label "$name" "$color" "$desc"
+    apply_label "$name" "$color" "$desc"
 done
 
 echo ""

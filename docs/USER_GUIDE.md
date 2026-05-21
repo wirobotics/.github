@@ -13,11 +13,12 @@
 4. [Issue Templates](#-issue-templates)
 5. [Labels 체계](#-labels-체계)
 6. [Application Part Board (Project v2)](#-application-part-board-project-v2)
-7. [Epic 과 sub-issue 관리](#-epic-과-sub-issue-관리)
-8. [자동화 (Workflows)](#-자동화-workflows)
-9. [역할별 작업 흐름](#-역할별-작업-흐름)
-10. [운영 규칙 (Convention)](#-운영-규칙-convention)
-11. [FAQ & Troubleshooting](#-faq--troubleshooting)
+7. [Project 필터 가이드](#-project-필터-가이드)
+8. [Epic 과 sub-issue 관리](#-epic-과-sub-issue-관리)
+9. [자동화 (Workflows)](#-자동화-workflows)
+10. [역할별 작업 흐름](#-역할별-작업-흐름)
+11. [운영 규칙 (Convention)](#-운영-규칙-convention)
+12. [FAQ & Troubleshooting](#-faq--troubleshooting)
 
 ---
 
@@ -170,9 +171,205 @@ https://github.com/orgs/wirobotics/projects/6
 
 ---
 
+## 🔎 Project 필터 가이드
+
+Application Part Board 에서 원하는 이슈만 보기 위한 필터 활용법.
+
+### 필터 입력 위치
+
+```
+Project 화면:
+  ┌──────────────────────────────────────────┐
+  │ [⚡ Current Sprint] [📋 Backlog] ... [+] │
+  │                                            │
+  │ 🔍 [필터 입력 박스]                        │ ← 여기에 query 입력
+  │                                            │
+  │ ... 이슈 목록 ...                          │
+  └──────────────────────────────────────────┘
+```
+
+→ View 안의 필터 박스. View에 저장하면 영구, 단발성으로 쓰면 그 세션만.
+
+### 기본 syntax
+
+| 형태 | 의미 | 예시 |
+|---|---|---|
+| `field:value` | exact match | `status:Backlog` |
+| `field:!value` | not equal | `status:!Done` |
+| `field:val1,val2` | OR (같은 필드 내) | `status:Backlog,Todo` |
+| `-field:value` | 제외 | `-label:part:design` |
+| `is:state` | 이슈 상태 | `is:open`, `is:closed` |
+| `no:field` | 값 없음 | `no:assignee`, `no:iteration` |
+| 공백 | AND (다른 필드들) | `status:Todo priority:P0` |
+
+### Status / Priority / Iteration 필터
+
+| 필터 | 의미 |
+|---|---|
+| `status:Backlog` | Backlog 만 |
+| `status:"In Progress"` | 공백 포함 시 따옴표 |
+| `status:!Done` | Done 제외 |
+| `status:Backlog,Todo` | Backlog 또는 Todo |
+| `priority:P0` | P0 만 |
+| `priority:P0,P1` | P0 또는 P1 |
+| `iteration:@current` | 현재 스프린트 |
+| `iteration:@next` | 다음 스프린트 |
+| `iteration:@previous` | 이전 스프린트 |
+| `no:iteration` | 스프린트 미할당 |
+
+### Repo 필터
+
+| 필터 | 의미 |
+|---|---|
+| `repo:wirobotics/wirobotics-mall-back` | mall-back 만 |
+| `repo:wirobotics/admin-api,wirobotics/server-api` | 둘 중 하나 |
+| `-repo:wirobotics/application-epic` | application-epic 제외 |
+
+### Assignee / Author
+
+| 필터 | 의미 |
+|---|---|
+| `assignee:@me` | 본인 할당 |
+| `assignee:snlee89` | 특정 유저 |
+| `no:assignee` | 미할당 |
+| `author:@me` | 본인이 만든 이슈 |
+
+### Label 필터
+
+| 필터 | 의미 |
+|---|---|
+| `label:part:backend` | 백엔드 part 라벨 |
+| `label:"part:design"` | 콜론 포함 시 따옴표 가능 |
+| `label:part:backend,part:frontend` | 둘 중 하나 |
+| `-label:part:design` | design 제외 |
+| `no:label` | 라벨 없음 |
+
+### **Epic 필터** ⭐ (parent-issue)
+
+가장 많이 쓰는 필터 — 특정 Epic 의 sub-issue 만 보기:
+
+| 필터 | 의미 |
+|---|---|
+| `parent-issue:wirobotics/application-epic#N` | Epic #N 의 자식 이슈만 |
+| `no:parent-issue` | Epic에 안 속한 standalone 이슈 |
+| `has:sub-issues` | 자식이 있는 (= Epic일 가능성) |
+
+**Epic 번호 찾는 법:**
+```bash
+gh issue list -R wirobotics/application-epic --json number,title \
+  -q '.[] | "#\(.number) \(.title)"'
+```
+또는 https://github.com/wirobotics/application-epic/issues 에서 확인.
+
+### Date 필터
+
+| 필터 | 의미 |
+|---|---|
+| `created:>=2026-01-01` | 2026년 이후 생성 |
+| `updated:<2026-04-01` | 4월 전 업데이트 (오래된 것) |
+| `closed:>2026-05-01` | 5월 이후 닫힘 |
+
+### Type 필터
+
+| 필터 | 의미 |
+|---|---|
+| `type:Bug` | Bug 만 |
+| `type:Feature,Task` | Feature 또는 Task |
+| `is:issue` | 이슈만 (PR 제외) |
+| `is:pr` | PR 만 |
+
+### 자주 쓰는 조합 예시
+
+**1. 자사몰 현대화 Epic 의 백엔드 작업만**
+```
+parent-issue:wirobotics/application-epic#2 label:part:backend
+```
+
+**2. 자사몰 현대화 Epic 의 미완료 이슈 (Kanban으로)**
+```
+parent-issue:wirobotics/application-epic#2 status:!Done
+```
+
+**3. 이번 스프린트 P0 미완료**
+```
+iteration:@current priority:P0 status:!Done
+```
+
+**4. 오래된 백엔드 백로그 (1개월 이상)**
+```
+status:Backlog label:part:backend updated:<2026-04-21
+```
+
+**5. 미할당 + Priority 없는 이슈 (트리아지 대기)**
+```
+no:assignee no:priority
+```
+
+**6. 본인 In Progress**
+```
+assignee:@me status:"In Progress"
+```
+
+**7. application-epic 의 모든 Epic 목록**
+```
+repo:wirobotics/application-epic type:Epic
+```
+
+**8. 이번 주에 닫힌 이슈 (회고용)**
+```
+closed:>=2026-05-14 status:Done
+```
+
+**9. 특정 repo + 디자인 미진행**
+```
+repo:wirobotics/wirobotics-mall-front label:part:design status:!Done
+```
+
+**10. Epic 에 안 속한 미완료 이슈 (parent 설정 잊은 것)**
+```
+no:parent-issue status:!Done
+```
+
+### 필터를 View 로 저장 (재사용)
+
+자주 쓰는 필터는 view 로 만들어두면 매번 입력 안 해도 됨:
+
+```
+1. Project 화면 좌측 상단 "+ New view"
+2. View 이름 입력
+3. Layout 선택 (Board / Table / Roadmap)
+4. 필터 박스에 query 입력
+5. 자동 저장 → 탭으로 영구 보존
+```
+
+**예시: "🎯 자사몰 현대화 Epic" view 만들기**
+- Layout: **Board**
+- Group by: `Status`
+- Filter: `parent-issue:wirobotics/application-epic#2`
+- → Epic #2 의 모든 sub-issue 가 Status 컬럼 형태로 표시
+
+### Tips
+
+- ✅ **자동완성 활용**: `field:` 까지 타이핑하면 가능한 값이 드롭다운으로 표시됨
+- ✅ **여러 필터 = 공백** (AND): `status:Todo priority:P0`
+- ✅ **같은 필드 OR = 쉼표**: `status:Backlog,Todo`
+- ❌ **다른 필드 OR 는 불가** — 그건 별도 view 만들어야 함
+- ✅ **NOT 연산**: `!` (값) 또는 `-` (필드 자체) 사용
+- ✅ **헷갈리면 view 로**: 한 번 잘 만들어두면 매번 타이핑 안 해도 됨
+
+### View vs Ad-hoc 필터
+
+| | View 저장 | Ad-hoc (필터 박스에 입력만) |
+|---|---|---|
+| 지속성 | 영구 | 그 세션만 (페이지 새로고침 X) |
+| 다른 사람과 공유 | ✅ (모두에게 보임) | ❌ (본인만) |
+| 추천 시점 | 매일/매주 보는 화면 | 일회성 조회 |
+
+---
+
 ## 🎯 Epic 과 sub-issue 관리
 
-### Epic 만들기 (PM/리드)
+### Epic 만들기 (PM/리드/기획)
 
 1. `https://github.com/wirobotics/application-epic/issues/new/choose`
 2. 🎯 Epic 템플릿 선택
@@ -325,18 +522,15 @@ gh issue transfer <num> wirobotics/<correct-repo> -R wirobotics/application-epic
 
 ## ❓ FAQ & Troubleshooting
 
-### Q. New Issue 화면에 템플릿이 안 보여요
-- 해당 repo에 자체 `.github/ISSUE_TEMPLATE/` 가 있는지 확인 (있으면 fallback override 됨)
-- `.github` 레포가 public 인지 확인 (private 이면 fallback 미동작)
 
 ### Q. 이슈에 Type 이 자동 부여 안 돼요
 - Org Issue Types 에 해당 Type 이 있는지 확인
 - 템플릿 yml의 `type:` 값과 Org Issue Type 이름 일치하는지 (대소문자 정확히)
 
 ### Q. Project 에 이슈가 안 들어와요
+- 수동 추가: 이슈 사이드바 Projects → Application Part Board
 - 1시간 lag 있음 (다음 hourly sync 기다리기)
 - 해당 repo 에 `topic:application` 있는지 확인
-- 또는 수동 추가: 이슈 사이드바 Projects → Application Part Board
 
 ### Q. Closed 이슈가 Done 으로 안 됨
 - Sync App Project workflow 가 자동 처리 (다음 sync 시점)
@@ -378,10 +572,4 @@ gh issue transfer <num> wirobotics/<correct-repo> -R wirobotics/application-epic
 | Org Secrets | https://github.com/organizations/wirobotics/settings/secrets/actions |
 
 ---
-
-## 📅 향후 작업 (Deferred)
-
-- **분산 workflow (실시간 Project 등록)**: Team 플랜 업그레이드 후 활성화 가능. 현재는 1시간 lag 있는 hourly sync 운영.
-- **PR 템플릿**: 필요해지면 도입.
-- **Status 자동화 강화**: PR merged → Status=Done 등 (Project workflows 활성화).
 

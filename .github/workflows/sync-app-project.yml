@@ -2,7 +2,8 @@ name: Sync App Project
 
 on:
   schedule:
-    - cron: '0 * * * *'   # 매 시간 정각
+    - cron: '0 * * * *'      # 매시간 incremental
+    - cron: '0 18 * * 6'     # 매주 토요일 18:00 UTC = 일요일 03:00 KST → full sync (안전망)
   workflow_dispatch:
     inputs:
       full_sync:
@@ -18,19 +19,28 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Sync issues (incremental or full) to Application Part Board
+      - name: Sync issues to Application Part Board
         env:
           GH_TOKEN: ${{ secrets.LABEL_SEED_TOKEN }}
-          FULL_SYNC: ${{ inputs.full_sync || 'false' }}
+          TRIGGER_SCHEDULE: ${{ github.event.schedule }}
+          MANUAL_FULL: ${{ inputs.full_sync || 'false' }}
         run: |
           set -euo pipefail
           PROJECT_NUMBER=6
           PROJECT_ID="PVT_kwDOB5DVVs4BYQYX"
           ORG=wirobotics
+          WEEKLY_CRON='0 18 * * 6'
 
           if [ -z "$GH_TOKEN" ]; then
             echo "❌ LABEL_SEED_TOKEN secret not set."
             exit 1
+          fi
+
+          # Full sync 판단: 수동 full_sync=true 또는 weekly cron 트리거 시
+          if [ "$MANUAL_FULL" = "true" ] || [ "$TRIGGER_SCHEDULE" = "$WEEKLY_CRON" ]; then
+            FULL_SYNC="true"
+          else
+            FULL_SYNC="false"
           fi
 
           # Status field + Done option ID 조회
@@ -50,12 +60,11 @@ jobs:
           STATUS_FIELD_ID=$(echo "$STATUS_INFO" | jq -r '.data.organization.projectV2.field.id')
           DONE_OPTION_ID=$(echo "$STATUS_INFO" | jq -r '.data.organization.projectV2.field.options[] | select(.name=="Done") | .id')
 
-          # 시간 필터 설정
           if [ "$FULL_SYNC" = "true" ]; then
             SEARCH_FILTER=""
-            echo "🌐 FULL SYNC mode — 모든 이슈 처리"
+            REASON=$([ "$MANUAL_FULL" = "true" ] && echo "manual workflow_dispatch" || echo "weekly safety net")
+            echo "🌐 FULL SYNC mode — 모든 이슈 처리 (reason: $REASON)"
           else
-            # 3시간 lookback (시스템 장애 대비 buffer)
             CUTOFF=$(date -u -d '3 hours ago' +%FT%TZ 2>/dev/null || date -u -v-3H +%FT%TZ)
             SEARCH_FILTER="updated:>=$CUTOFF"
             echo "⚡ INCREMENTAL mode — 최근 3시간 변경분만"
@@ -70,7 +79,6 @@ jobs:
           echo ""
 
           for repo in $repos; do
-            # incremental: --search 로 필터, full: 전체
             if [ -n "$SEARCH_FILTER" ]; then
               raw=$(gh issue list -R "$repo" --state all --limit 500 --search "$SEARCH_FILTER" --json url,state 2>/dev/null || echo '[]')
             else

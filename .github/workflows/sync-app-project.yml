@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: '0 * * * *'   # 매 시간 정각
   workflow_dispatch:
+    inputs:
+      full_sync:
+        description: '전체 sync (모든 이슈 다시 처리). 비활성화면 최근 3시간 변경된 것만'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -12,9 +18,10 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Sync all issues (open + closed) to Application Part Board
+      - name: Sync issues (incremental or full) to Application Part Board
         env:
           GH_TOKEN: ${{ secrets.LABEL_SEED_TOKEN }}
+          FULL_SYNC: ${{ inputs.full_sync || 'false' }}
         run: |
           set -euo pipefail
           PROJECT_NUMBER=6
@@ -26,7 +33,7 @@ jobs:
             exit 1
           fi
 
-          # Status 필드와 Done 옵션 ID 조회 (resilient: ID 바뀌어도 동작)
+          # Status field + Done option ID 조회
           STATUS_INFO=$(gh api graphql -f query='
             query {
               organization(login: "wirobotics") {
@@ -43,8 +50,17 @@ jobs:
           STATUS_FIELD_ID=$(echo "$STATUS_INFO" | jq -r '.data.organization.projectV2.field.id')
           DONE_OPTION_ID=$(echo "$STATUS_INFO" | jq -r '.data.organization.projectV2.field.options[] | select(.name=="Done") | .id')
 
-          echo "📐 Status field: $STATUS_FIELD_ID"
-          echo "✓ Done option: $DONE_OPTION_ID"
+          # 시간 필터 설정
+          if [ "$FULL_SYNC" = "true" ]; then
+            SEARCH_FILTER=""
+            echo "🌐 FULL SYNC mode — 모든 이슈 처리"
+          else
+            # 3시간 lookback (시스템 장애 대비 buffer)
+            CUTOFF=$(date -u -d '3 hours ago' +%FT%TZ 2>/dev/null || date -u -v-3H +%FT%TZ)
+            SEARCH_FILTER="updated:>=$CUTOFF"
+            echo "⚡ INCREMENTAL mode — 최근 3시간 변경분만"
+            echo "   cutoff: $CUTOFF"
+          fi
           echo ""
 
           echo "🔍 Finding repos with topic 'application'..."
@@ -54,18 +70,22 @@ jobs:
           echo ""
 
           for repo in $repos; do
-            issue_count=$(gh issue list -R "$repo" --state all --limit 500 --json url -q 'length')
+            # incremental: --search 로 필터, full: 전체
+            if [ -n "$SEARCH_FILTER" ]; then
+              raw=$(gh issue list -R "$repo" --state all --limit 500 --search "$SEARCH_FILTER" --json url,state 2>/dev/null || echo '[]')
+            else
+              raw=$(gh issue list -R "$repo" --state all --limit 500 --json url,state)
+            fi
+
+            issue_count=$(echo "$raw" | jq 'length')
             printf "═══ %s (%s issues)\n" "$repo" "$issue_count"
             [ "$issue_count" = "0" ] && continue
 
-            gh issue list -R "$repo" --state all --limit 500 --json url,state \
-              | jq -r '.[] | "\(.state)|\(.url)"' \
+            echo "$raw" | jq -r '.[] | "\(.state)|\(.url)"' \
               | while IFS='|' read -r state url; do
-                  # 이슈를 Project에 추가 (멱등 — 이미 있으면 기존 item 반환)
                   ITEM_ID=$(gh project item-add "$PROJECT_NUMBER" --owner "$ORG" --url "$url" --format json | jq -r '.id')
 
                   if [ "$state" = "CLOSED" ]; then
-                    # closed 이슈는 Status=Done 으로 설정 (멱등)
                     gh api graphql -f query="
                       mutation {
                         updateProjectV2ItemFieldValue(input: {
@@ -83,4 +103,4 @@ jobs:
           done
 
           echo ""
-          echo "✨ Done."
+          echo "✨ Done. (mode: $([ "$FULL_SYNC" = "true" ] && echo "FULL" || echo "INCREMENTAL 3h"))"

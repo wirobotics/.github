@@ -1,0 +1,37 @@
+# Reusable workflow — application-team repo에서 호출되어 새 이슈를
+# Application Part Board (Project #6) 에 자동 추가합니다.
+#
+# 호출 예시 (각 application repo의 .github/workflows/add-to-project.yml):
+#   on:
+#     issues:
+#       types: [opened]
+#   jobs:
+#     add:
+#       uses: wirobotics/.github/.github/workflows/_add-to-app-board.yml@main
+#       secrets: inherit
+
+name: _add-to-app-board (reusable)
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  add:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add issue to Application Part Board
+        env:
+          GH_TOKEN: ${{ secrets.LABEL_SEED_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "❌ LABEL_SEED_TOKEN secret not available in caller repo or org."
+            echo "→ Add LABEL_SEED_TOKEN as org-level secret OR per-repo secret."
+            exit 1
+          fi
+
+          ISSUE_URL="${{ github.event.issue.html_url }}"
+          echo "📋 Adding issue to Project #6: $ISSUE_URL"
+          gh project item-add 6 --owner wirobotics --url "$ISSUE_URL"

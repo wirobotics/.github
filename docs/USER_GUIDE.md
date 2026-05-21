@@ -254,12 +254,37 @@ Project 화면:
 | `no:parent-issue` | Epic에 안 속한 standalone 이슈 |
 | `has:sub-issues` | 자식이 있는 (= Epic일 가능성) |
 
+> ⚠️ **Epic 이름으로 직접 필터링 불가** — 번호 (`#N`) 만 지원. 우회 방법은 아래 참고.
+
 **Epic 번호 찾는 법:**
 ```bash
 gh issue list -R wirobotics/application-epic --json number,title \
   -q '.[] | "#\(.number) \(.title)"'
 ```
 또는 https://github.com/wirobotics/application-epic/issues 에서 확인.
+
+### Epic "이름" 으로 보고 싶을 때 — 3가지 우회
+
+이름 기반 필터링이 직접 안 되지만 다음 방법으로 같은 효과:
+
+**1. View 로 저장 (가장 추천) ⭐**
+```
++ New view → 이름: "🎯 자사몰 현대화 Epic"
+Filter: parent-issue:wirobotics/application-epic#2
+```
+→ 한 번 만들어두면 view 탭 클릭만으로 접근. Epic 별로 view 1개씩.
+
+**2. Group by Parent issue (시각적)**
+```
+Group by: Parent issue
+```
+→ Epic 이름이 그룹 헤더로 표시. 보고 싶은 Epic 만 펼침.
+
+**3. Keyword 검색 (부정확, 일회성)**
+```
+자사몰 현대화
+```
+→ Title/body 키워드 매칭. parent-issue 관계와 무관해서 정확도 낮음.
 
 ### Date 필터
 

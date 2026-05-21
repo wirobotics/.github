@@ -2,6 +2,9 @@
 
 이 레포는 **wirobotics** organization 의 GitHub 공통 자산을 관리합니다.
 
+> 📖 **상세 운영 가이드**: [docs/USER_GUIDE.md](docs/USER_GUIDE.md) — Application 파트 전체 팀원 참고
+
+
 ## 무엇이 들어있나요?
 
 | 파일 | 역할 | 적용 방식 |
